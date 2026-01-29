@@ -10,28 +10,45 @@
   <link rel="icon" href="/static/favicon.ico" />
   <link rel="stylesheet" href="/static/style.css" />
 
-  <!-- PDF.js / SheetJS 로컬-->
+  <!-- PDF.js / SheetJS 로컬 -->
   <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
+    /* ===== 모바일 겹침 방지 핵심 ===== */
+    *, *::before, *::after { box-sizing: border-box; }
+    label { display:block; min-width:0; }
+    input, select { width:100%; max-width:100%; box-sizing:border-box; }
+
     .card { border:1px solid #e5e7eb; border-radius:14px; padding:16px; margin:12px 0; background:#fff; }
     .muted { color:#64748b; font-size:13px; line-height:1.6; }
+
     .grid2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
     .grid3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+
+    /* grid 내부 자식이 overflow로 튀지 않게 */
+    .grid2 > *, .grid3 > * { min-width:0; }
+
     .drop-zone {
       border:2px dashed #cbd5e1; border-radius:14px; padding:18px; background:#f8fafc;
       cursor:pointer; transition:.2s; text-align:center;
     }
     .drop-zone.dragover { border-color:#0f766e; background:#ecfeff; }
     .file-info { margin-top:8px; font-size:13px; color:#334155; }
+
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { border:1px solid #e5e7eb; padding:8px; text-align:left; }
     th { background:#f8fafc; }
     .right { text-align:right; }
+
     .btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
     .warn { color:#b91c1c; font-weight:700; }
-    @media (max-width: 900px){ .grid2,.grid3{ grid-template-columns:1fr; } }
+
+    /* ===== 여기서 강제로 1열 전환(기존 style.css가 덮어쓰는 경우 대비) ===== */
+    @media (max-width: 900px){
+      .grid2 { grid-template-columns: 1fr !important; }
+      .grid3 { grid-template-columns: 1fr !important; }
+    }
   </style>
 </head>
 
@@ -52,7 +69,7 @@
   <section class="card">
     <h2 style="margin:0 0 8px;">1. 지출품의서 PDF 업로드</h2>
 
-    <!-- 모바일  -->
+    <!-- 모바일 -->
     <input
       id="pdfInput"
       type="file"
