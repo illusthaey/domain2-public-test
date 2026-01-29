@@ -1,12 +1,19 @@
-/* /after-school-monthly-wage/script.js */
 (function () {
+  // --- 라이브러리 로드 확인 ---
   const pdfjsLib = window.pdfjsLib;
+  const XLSX = window.XLSX;
+
   if (!pdfjsLib) {
-    alert("PDF.js 로딩 실패. 네트워크 상태를 확인하세요.");
+    alert("PDF.js 로딩 실패: /static/vendor/pdf.min.js 경로를 확인하세요.");
     return;
   }
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.js";
+  if (!XLSX) {
+    alert("XLSX 로딩 실패: /static/vendor/xlsx.full.min.js 경로를 확인하세요.");
+    return;
+  }
+
+  // worker도 로컬로 (학교망 차단 회피)
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/static/vendor/pdf.worker.min.js";
 
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => (Number.isFinite(n) ? Math.round(n).toLocaleString("ko-KR") : "0");
@@ -36,14 +43,12 @@
 
   const state = {
     files: [],
-    rawItems: [],
-    summary: [],
-    uncertain: [],
     workbook: null,
   };
 
   function setFiles(files) {
     const list = Array.from(files || []);
+    // 모바일(iOS Safari)에서 type이 비어오는 경우 대비: 확장자(.pdf)도 허용
     state.files = list.filter((f) => {
       const nameOk = (f.name || "").toLowerCase().endsWith(".pdf");
       const typeOk = (f.type || "") === "application/pdf";
@@ -84,7 +89,7 @@
     return p ? p.rate : EXPENSE_PERIODS[EXPENSE_PERIODS.length - 1].rate;
   }
 
-  // 3) PDF 텍스트 추출 (로컬 처리)
+  // 3) PDF 텍스트 추출 (로컬)
   async function extractTextFromPdf(file) {
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument(buf).promise;
@@ -109,7 +114,7 @@
       .trim();
   }
 
-  // 품목내역 구간을 더 안정적으로 컷
+  // 품목내역 구간 컷
   function cutItemsSection(text) {
     if (!text.includes("품목내역")) return text;
     const after = text.split("품목내역").slice(1).join(" ");
@@ -117,11 +122,12 @@
     return idx >= 0 ? after.slice(0, idx) : after;
   }
 
+  // 번호 앞 개행 삽입(행 분절)
   function injectRowBreaks(text) {
     return text.replace(/(\s)(\d{1,3})\s+/g, "\n$2 ");
   }
 
-  // "번호 내용 수량 단가 금액" 최대한 복원
+  // "번호 내용 수량 단가 금액" 파서
   const ROW_RE = /^\s*(\d+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+)\s+([\d,]+)\s*$/;
 
   function parseRow(line) {
@@ -139,7 +145,7 @@
     let type = "기타";
     let match = "미확정";
 
-    // 1) "... 강사료"
+    // 1) "... 강사료 김태희"
     if (desc.includes("강사료")) {
       const parts = desc.split(" ");
       const idx = parts.indexOf("강사료");
@@ -161,7 +167,7 @@
         type = "강사료";
         match = "확정";
       } else {
-        course = desc; // 끝전 포함, 원문 유지
+        course = desc; // 끝전 포함 원문 유지
         if (desc.includes("끝전") || desc.includes("충당금")) {
           type = "끝전";
           match = "미확정";
@@ -182,7 +188,7 @@
       .filter((t) => t && !STOP.has(t) && !/^\d+$/.test(t));
   }
 
-  // 강사명 없는 끝전 행 자동부착(단일 후보만)
+  // 끝전 자동부착(단일 후보만)
   function attachUnassigned(items) {
     const byInst = new Map();
     items.forEach((it) => {
@@ -244,7 +250,7 @@
       }));
   }
 
-  // 4) 엑셀 생성
+  // 엑셀 생성
   function buildWorkbook({ rawItems, summaryRows, uncertainRows, settings }) {
     const wb = XLSX.utils.book_new();
 
@@ -293,7 +299,6 @@
     return wb;
   }
 
-  // 5) 화면 렌더
   function renderTables(summaryRows, uncertainRows, settings) {
     const tb = $("tblSummary").querySelector("tbody");
     const ub = $("tblUncertain").querySelector("tbody");
@@ -328,7 +333,6 @@
     });
   }
 
-  // 6) 메인 실행
   async function run() {
     if (!state.files.length) {
       status.innerHTML = `<span class="warn">PDF 파일을 선택하십시오.</span>`;
@@ -356,7 +360,7 @@
             const parsed = parseRow(line);
             if (!parsed) return;
 
-            // 노이즈 컷(오탐 줄이기): 강사료/끝전/충당금 관련만 유지
+            // 노이즈 컷(오탐 줄이기)
             if (!(parsed.desc.includes("강사료") || parsed.desc.includes("끝전") || parsed.desc.includes("충당금"))) {
               return;
             }
@@ -367,8 +371,8 @@
       }
 
       attachUnassigned(rawItems);
-      const summaryRows = summarize(rawItems);
 
+      const summaryRows = summarize(rawItems);
       const uncertainRows = rawItems.filter(
         (it) => (it.type === "끝전") && (!it.instructor || it.match_status === "미확정")
       );
@@ -385,10 +389,6 @@
       };
 
       const wb = buildWorkbook({ rawItems, summaryRows, uncertainRows, settings });
-
-      state.rawItems = rawItems;
-      state.summary = summaryRows;
-      state.uncertain = uncertainRows;
       state.workbook = wb;
 
       renderTables(summaryRows, uncertainRows, settings);
