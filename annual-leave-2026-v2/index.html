@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>2026학년도 연차유급휴가 부여일수 계산기(학교근무 교육공무직 전용)</title>
+  <link rel="stylesheet" href="style.css"/>
+
+  <!-- 1) 로컬 포함(내부망/오프라인 배포용): lib/xlsx.full.min.js 를 같은 폴더 구조로 넣어두면 가장 안정적입니다. -->
+  <script src="lib/xlsx.full.min.js"></script>
+
+  <!-- 2) 로컬이 없으면 CDN 시도(외부망 차단 환경에서는 실패할 수 있음) -->
+  <script>
+    (function ensureXLSX() {
+      if (typeof XLSX !== 'undefined') return;
+      const s = document.createElement('script');
+      s.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+      s.async = true;
+      s.onload = () => {
+        console.info('[XLSX] CDN 로딩 성공');
+        document.dispatchEvent(new Event('xlsx-ready'));
+      };
+      s.onerror = () => {
+        console.warn('[XLSX] 로딩 실패: lib/xlsx.full.min.js 를 로컬에 포함하거나, CDN 허용 환경에서 실행하세요.');
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
+</head>
+
+<body>
+  <header class="container">
+    <h1>2026학년도 연차유급휴가 부여일수 계산기</h1>
+    <p class="subtle">
+      <strong>전용 범위 고정:</strong> 2025학년도(2025-03-01 ~ 2026-02-28) 근무실적 → 2026-03-01 부여(2026학년도 사용) 산정 전용.
+      단체협약/업무편람 개정사항은 반영하지 않습니다(일회성 배포).
+      <br/>
+      <strong>처리 방식:</strong> 업로드 파일은 브라우저에서만 처리되며 서버로 전송되지 않습니다.
+    </p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>1. 학사일정 입력(학교별)</h2>
+      <div class="grid-2">
+        <div>
+          <div class="label">여름방학 시작일</div>
+          <input id="summerStart" type="date" />
+        </div>
+        <div>
+          <div class="label">여름방학 종료일</div>
+          <input id="summerEnd" type="date" />
+        </div>
+        <div>
+          <div class="label">겨울방학 시작일</div>
+          <input id="winterStart" type="date" />
+        </div>
+        <div>
+          <div class="label">겨울방학 종료일</div>
+          <input id="winterEnd" type="date" />
+        </div>
+      </div>
+
+      <div class="row">
+        <label class="checkbox">
+          <input id="excludeSaturday" type="checkbox" checked />
+          토요일 제외(기본 ON)
+        </label>
+      </div>
+
+      <div class="row">
+        <button id="btnApplyCalendar" class="primary">학사일정 적용</button>
+        <div id="calendarSummary" class="subtle"></div>
+      </div>
+
+      <details class="help">
+        <summary>운영 안내</summary>
+        <ul>
+          <li>비상시근로자(방학중 비근무자) 출근율 산정은 학교별 방학 일정에 의해 분모가 달라집니다.</li>
+          <li>방학 구간은 “기간”으로 입력하며, 토요일은 기본 제외 처리합니다.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>2. 인사정보 입력(인사기록 조회)</h2>
+
+      <div class="row">
+        <div class="label">입력 방식</div>
+        <label class="radio">
+          <input type="radio" name="hrMethod" value="upload" checked />
+          파일 업로드(나이스 인사기록 조회 엑셀)
+        </label>
+        <label class="radio">
+          <input type="radio" name="hrMethod" value="manual" />
+          수기 입력
+        </label>
+      </div>
+
+      <div id="hrUploadPane" class="pane">
+        <div class="row">
+          <input id="hrFile" type="file" accept=".xlsx,.xls,.csv" />
+          <button id="btnLoadHr" class="primary">인사 엑셀 불러오기</button>
+        </div>
+        <div id="hrUploadStatus" class="subtle"></div>
+        <details class="help">
+          <summary>파일이 없거나 업로드가 안 될 때</summary>
+          <ul>
+            <li>내부망에서 CDN이 차단되면 엑셀(xlsx) 파싱이 실패할 수 있습니다. 이 경우 <code>lib/xlsx.full.min.js</code> 로컬 포함 방식으로 배포하세요.</li>
+            <li>파일이 없으면 “수기 입력”으로 전환하여 대상자를 직접 등록할 수 있습니다.</li>
+          </ul>
+        </details>
+      </div>
+
+      <div id="hrManualPane" class="pane hidden">
+        <div class="grid-3">
+          <div>
+            <div class="label">개인번호(선택)</div>
+            <input id="mPersonalId" type="text" placeholder="예: K1090..." />
+          </div>
+          <div>
+            <div class="label">성명</div>
+            <input id="mName" type="text" placeholder="예: 홍길동" />
+          </div>
+          <div>
+            <div class="label">직종</div>
+            <input id="mJob" type="text" placeholder="예: 조리실무사" />
+          </div>
+
+          <div>
+            <div class="label">직종구분</div>
+            <select id="mJobGroup">
+              <option value="교육공무직">교육공무직</option>
+              <option value="특수운영직">특수운영직</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div>
+            <div class="label">근무형태</div>
+            <select id="mWorkForm">
+              <option value="상시근무자">상시근무자</option>
+              <option value="방학중비근무자">방학중비근무자</option>
+              <option value="단시간방학중비근무자">단시간방학중비근무자</option>
+              <option value="초단시간근무자">초단시간근무자</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div>
+            <div class="label">근무유형</div>
+            <select id="mWorkType">
+              <option value="전일제">전일제</option>
+              <option value="시간제">시간제</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="label">주소정근로시간(주)</div>
+            <input id="mWeeklyHours" type="number" min="0" step="0.5" value="40" />
+          </div>
+          <div>
+            <div class="label">최초임용일(근무시작일)</div>
+            <input id="mHireDate" type="date" />
+          </div>
+          <div class="row align-end">
+            <button id="btnAddEmployee" class="primary">대상자 추가</button>
+          </div>
+        </div>
+
+        <div id="hrManualStatus" class="subtle"></div>
+      </div>
+
+      <h3 class="section-title">대상자 목록</h3>
+      <div class="table-wrap">
+        <table id="tblEmployees">
+          <thead>
+            <tr>
+              <th>개인번호</th>
+              <th>성명</th>
+              <th>직종</th>
+              <th>직종구분</th>
+              <th>근무형태</th>
+              <th>근무유형</th>
+              <th>근무시작일</th>
+              <th>주소정(주)</th>
+              <th>2026-03-01 기준 근속(완료연수)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3. 근무상황 입력(근무상황목록/근무상황조회)</h2>
+
+      <div class="row">
+        <div class="label">입력 방식</div>
+        <label class="radio">
+          <input type="radio" name="workMethod" value="upload" checked />
+          파일 업로드(나이스 근무상황목록 엑셀/CSV)
+        </label>
+        <label class="radio">
+          <input type="radio" name="workMethod" value="manual" />
+          수기 입력(복무 기간 직접 등록)
+        </label>
+      </div>
+
+      <div id="workUploadPane" class="pane">
+        <div class="row">
+          <input id="workFiles" type="file" accept=".xlsx,.xls,.csv" multiple />
+          <button id="btnLoadWork" class="primary">근무상황 파일 불러오기</button>
+        </div>
+        <div id="workUploadStatus" class="subtle"></div>
+      </div>
+
+      <div id="workManualPane" class="pane hidden">
+        <div class="grid-3">
+          <div>
+            <div class="label">대상자 선택</div>
+            <select id="mEmpSelect"></select>
+          </div>
+          <div>
+            <div class="label">기간 시작</div>
+            <input id="mRecStart" type="date" />
+          </div>
+          <div>
+            <div class="label">기간 종료</div>
+            <input id="mRecEnd" type="date" />
+          </div>
+
+          <div>
+            <div class="label">종별(복무 종류)</div>
+            <input id="mRecType" type="text" placeholder="예: 질병휴직 / 공가 / 기타 ..." />
+          </div>
+          <div>
+            <div class="label">사유 또는 용무(선택)</div>
+            <input id="mRecReason" type="text" placeholder="예: 학교장재량휴업일" />
+          </div>
+          <div>
+            <div class="label">분류(자동/수동)</div>
+            <select id="mRecClass">
+              <option value="auto">자동 판별</option>
+              <option value="deemed">출근 간주</option>
+              <option value="excluded">산정 제외</option>
+              <option value="absence">결근성</option>
+              <option value="review">검토</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="checkbox">
+              <input id="mRecVacationCredit" type="checkbox" />
+              방학 중 근무(상시기준 출근율 가산용)로 계산
+            </label>
+          </div>
+          <div class="row align-end">
+            <button id="btnAddRecord" class="primary">복무 기록 추가</button>
+          </div>
+        </div>
+
+        <div class="subtle">
+          수기 입력은 “예외사항(휴직/휴업/파업/결근 등)”을 기간으로 등록하는 방식입니다. 등록하지 않은 날짜는 정상 근무로 간주합니다.
+        </div>
+      </div>
+
+      <h3 class="section-title">복무 기록(전체)</h3>
+      <div class="table-wrap">
+        <table id="tblRecords">
+          <thead>
+            <tr>
+              <th>대상자</th>
+              <th>개인번호</th>
+              <th>기간</th>
+              <th>종별</th>
+              <th>사유</th>
+              <th>자동분류</th>
+              <th>최종분류</th>
+              <th>방학근무크레딧</th>
+              <th>결재상태</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <details class="help">
+        <summary>복무를 잘못 낸 경우(검토/정정)</summary>
+        <ul>
+          <li>자동분류는 “종별/사유 키워드”로 추정합니다. 잘못 분류된 항목은 “최종분류”를 변경하여 재계산하세요.</li>
+          <li>비상시근로자에서 방학 중 유급 근무(연수/교육/우선채용 등)는 “방학근무크레딧”을 켜야 상시기준 출근율에 반영됩니다.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>4. 계산 실행 및 결과</h2>
+      <div class="row">
+        <button id="btnCalculate" class="primary">계산 실행</button>
+        <button id="btnExport" class="secondary">결과 다운로드(xlsx)</button>
+      </div>
+      <div id="calcStatus" class="subtle"></div>
+
+      <h3 class="section-title">연차 부여 결과(요약)</h3>
+      <div class="table-wrap">
+        <table id="tblResults">
+          <thead>
+            <tr>
+              <th>성명</th>
+              <th>개인번호</th>
+              <th>직종</th>
+              <th>근무형태</th>
+              <th>직종구분</th>
+              <th>근속(완료연수)</th>
+              <th>출근율(비상시)</th>
+              <th>출근율(상시)</th>
+              <th>출근율(비상시 재산정)</th>
+              <th>산정 경로</th>
+              <th>기본/가산</th>
+              <th>최종 부여</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="container subtle">
+    <div>
+      버전: 2026학년도 전용(2025학년도 근무실적) / 기준일: 2026-03-01
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
