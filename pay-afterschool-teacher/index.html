@@ -44,7 +44,7 @@
     }
     .toolbar .btn { padding: 9px 14px; border-radius: 12px; }
 
-    /* ✅ 상단 업로드 영역(표 위) */
+    /* 상단 업로드 영역(표 위) */
     .table-actions.top-actions { justify-content: flex-start; margin-top: 8px; }
 
     /* 입력이 많은 칸들은 조금 더 타이트하게 */
@@ -55,16 +55,16 @@
       .toolbar { justify-content: flex-start; }
     }
 
-    /* ✅ <li> 없이 tool-list를 쓰기 위한 보강 스타일 */
+    /* <li> 없이 tool-list를 쓰기 위한 보강 스타일 */
     .tool-list { margin: 10px 0 0; padding: 0; }
     .tool-list .tool-line { margin: 0 0 6px; }
 
-    /* ✅ 기준 설정: 필요경비율 고정/수기변경 UI */
+    /* 기준 설정: 필요경비율 고정/수기변경 UI */
     .inline-row { display:flex; gap:10px; align-items:center; }
     .inline-row .chk { display:flex; gap:6px; align-items:center; white-space:nowrap; }
     #baseExpenseRate[disabled] { background:#f3f3f3; color:#555; cursor:not-allowed; }
 
-    /* ✅ 표의 필요경비율은 기준설정 연동값(읽기전용처럼 보이게) */
+    /* 표의 필요경비율은 기준설정 연동값(읽기전용처럼 보이게) */
     .sheetlike input[readonly] { background:#f3f3f3; color:#555; }
   </style>
 </head>
@@ -80,7 +80,7 @@
       </div>
 
       <div class="card help-box">
-        <div class="small">
+        <div class="small">          
           ·관련: 강원도교육청 인성생활교육과-15279(2025.7.23.), 고용노동부 고시 제2025-34호 및 제2025-36호<br/>
           ·기본값: 필요경비율 14.9%, 산재보험요율(개인) 0.33%, 고용보험요율(개인) 0.8%, 기준보수 하한 1,330,000원 적용.<br/>
           ※ 월보수액이 80만원 이상~133만원 미만 구간에 해당하면 고용보험료 산정 시 월보수액을 1,330,000원으로 간주함.<br/>
@@ -96,7 +96,7 @@
         <div class="field">
           <label class="small">필요경비율(%)</label><br/>
           <div class="inline-row">
-            <!-- ✅ 기본은 고정(비활성). 체크하면 수기 변경 가능 -->
+            <!-- 기본은 고정(비활성). 체크하면 수기 변경 가능 -->
             <input id="baseExpenseRate" type="number" step="0.1" value="14.9" disabled />
             <label class="small chk">
               <input type="checkbox" id="chkEditExpenseRate" />
@@ -106,7 +106,7 @@
         </div>
 
         <div class="field">
-          <label class="small">산재보험료율(개인)</label><br/>
+          <label class="small">산재보험요율(개인)</label><br/>
           <input id="wcPersonalRate" type="number" step="0.01" value="0.33" />
         </div>
 
@@ -117,8 +117,8 @@
       </div>
 
       <p class="hint">
-        ·필요경비율은 기본값(14.9%)으로 고정되어 있으며, **[수기 변경] 체크 시** 입력 가능합니다.<br/>
-        ·기준 설정의 필요경비율을 바꾸면, 산출내역의 필요경비율도 **전 행 자동 연동**됩니다.<br/>
+        ·필요경비율은 기본값(14.9%)으로 고정되어 있으며, 수기 변경에 체크 시 입력 가능합니다.<br/>
+        ·기준 설정의 필요경비율을 바꾸면, 산출내역의 필요경비율도 전체 자동 변경되도록 연동되어있습니다.<br/>
         ·참고: 2024.7월~2025.6월 필요경비율 16.5%임.<br/>
       </p>
     </section>
@@ -127,28 +127,26 @@
       <h3 class="local-h2 local-tight">월보수액 산출내역</h3>
 
       <p class="small table-note">
-        ·월보수액 =(강사료)-(필요경비)<br/>
-        ·고용보험료는 예상값이며, 다른 학교 신고 내역에 따라 변동가능성 있음. 보험료 어느정도 나올지 예상하려고 기능 넣음.<br/>
-        ·원단위 절삭.<br/>
+        ·월보수액 =(강사료)-(필요경비), 원단위 절삭<br/>
+        ·고용보험료는 예상값이며, 다른 학교 신고 내역에 따라 변동가능성 있음. 기관부담금 소요액 어느정도 나올지 예상하려고 기능 넣음.<br/>
+        ·엑셀 쓰듯이 키보드 방향키로 자유롭게 이동 가능합니다. 편하쥬? <br/>
       </p>
 
-      <!-- ✅ 요청대로: 상세설명 바로 밑(표 위)로 이동 -->
       <div class="table-actions top-actions">
         <div class="toolbar">
           <button class="btn ghost" id="btnDownloadTemplate" type="button">일괄 업로드용 서식 다운로드</button>
 
-          <button class="btn ghost" id="btnUploadExcelReplace" type="button">엑셀 서식 업로드(초기화 후 반영)</button>
-          <button class="btn ghost" id="btnUploadExcelAppend" type="button">엑셀 서식 추가반영</button>
+          <button class="btn ghost" id="btnUploadExcelReplace" type="button">엑셀 서식 업로드 (초기화 후 반영)</button>
+          <button class="btn ghost" id="btnUploadExcelAppend" type="button">엑셀 서식 추가 반영</button>
 
           <input id="fileUploadExcel" type="file" accept=".xlsx,.xls,.csv" style="display:none" />
         </div>
       </div>
 
-      <!-- ✅ 추가기능 안내 문구(요청사항) -->
       <div class="small" style="margin-top:6px; color:#666;">
-        ·엑셀 서식 업로드(초기화 후 반영): 기존 표 입력 내용을 지우고 업로드 내용으로 반영합니다.<br/>
-        ·엑셀 서식 추가반영: 기존 표 입력 내용은 유지하고, 빈 행부터 순서대로 채웁니다(부족 시 행 자동 추가).<br/>
-        ·업로드 파일에 비고(메모) 열이 있으면 같이 반영됩니다.<br/>
+        ·초기화 후 반영: 최초 업로드 시 또는 기존 내역이 있을 때는 싹 지우고 업로드 내용으로 반영합니다.<br/>
+        ·추가 반영: 기존 표 입력 내용은 유지하면서 순서대로 추가함.<br/>
+        ·업로드 서식에 강사명이랑 금액만 적어뒀는데 비고란 만들어서 문구 적으면 같이 반영되게 해둠.<br/>
       </div>
 
       <div class="table-wrap">
@@ -190,8 +188,8 @@
           <button class="btn ghost" id="btnAddRow" type="button">행 추가하기</button>
           <button class="btn ghost" id="btnReset" type="button">초기화</button>
           <button class="btn primary" id="btnCopy" type="button">표 복사하기</button>
-          <button class="btn ghost" id="btnDownloadExcel" type="button">엑셀(계산결과) 다운로드</button>
-          <button class="btn ghost" id="btnDownloadCsv" type="button">CSV(계산결과) 다운로드</button>
+          <button class="btn ghost" id="btnDownloadExcel" type="button">계산결과 (엑셀) 다운로드</button>
+          <button class="btn ghost" id="btnDownloadCsv" type="button">계산결과 (CSV) 다운로드</button>
         </div>
       </div>
 
@@ -202,7 +200,7 @@
     </section>
 
     <section class="section dl-section">
-      <h2 class="local-h2">exe 프로그램 다운로드 받기</h2>
+      <h2 class="local-h2">프로그램으로 다운로드 받기</h2>
       <hr/>
 
       <div class="tool-grid">
