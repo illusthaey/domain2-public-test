@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>출장·초과근무 매칭기</title>
+
+  <link rel="stylesheet" href="/static/style.css" />
+
+  <style>
+    /* 이 페이지 전용: 기존 CSS를 건드리지 않고 필요한 것만 아주 조금 추가 */
+    .field label {
+      display: block;
+      font-weight: 700;
+      margin: 0 0 6px;
+      color: #111;
+    }
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 0;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border: 1px solid #d4d4d8;
+      border-radius: 999px;
+      background: #f9fafb;
+      font-size: 0.95rem;
+      color: #333;
+      white-space: nowrap;
+    }
+    .pill strong { color: #111; }
+    .status-error { color: #b91c1c; }
+    .status-ok { color: #065f46; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="shell">
+      <h1>출장·초과근무 매칭기</h1>
+      <p class="subtitle">
+        초과근무(.xlsx) + 출장신청서(.xlsx) 업로드 → 출장기간과 겹치는 초과근무를 사람별로 찾아줍니다.
+      </p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <h2>1) 파일 업로드</h2>
+
+      <div class="grid two">
+        <div class="field">
+          <label for="otFile">초과근무 목록(.xlsx)</label>
+          <input id="otFile" type="file" accept=".xlsx,.xls" />
+          <p class="muted">
+            컬럼에 <span class="mono">초과근무일자 / 성명 / 시작시간 / 종료시간</span>이 있어야 합니다.
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="tripFiles">출장신청서(.xlsx) 여러 개 선택 가능</label>
+          <input id="tripFiles" type="file" accept=".xlsx,.xls" multiple />
+          <p class="muted">
+            “결재용 출장신청서” xlsx 파일(월별/기관별)을 한 번에 여러 개 올려도 됩니다.
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="local-h3">판정 방식</h3>
+        <div class="row gap">
+          <label><input type="radio" name="mode" value="overlap" checked /> 겹침(부분이라도)</label>
+          <label><input type="radio" name="mode" value="contained" /> 완전 포함(초과근무 전체가 출장기간 안)</label>
+          <label><input type="radio" name="mode" value="date" /> 날짜만(시간 무시)</label>
+        </div>
+        <p class="muted">
+          기본은 <b>겹침</b>입니다. (경계만 닿는 경우: 끝==시작은 “겹치지 않음”으로 처리)
+        </p>
+      </div>
+
+      <div class="row between">
+        <div class="row gap">
+          <button class="btn primary" id="runBtn">분석하기</button>
+          <button class="btn ghost" id="clearBtn">초기화</button>
+        </div>
+        <div class="muted" id="status">대기중</div>
+      </div>
+    </section>
+
+    <section class="section" id="resultSection" style="display:none;">
+      <h2>2) 결과</h2>
+
+      <div class="grid three">
+        <div class="card">
+          <div class="muted">출장 건수</div>
+          <div id="tripCount" class="local-large">0</div>
+        </div>
+        <div class="card">
+          <div class="muted">초과근무 건수</div>
+          <div id="otCount" class="local-large">0</div>
+        </div>
+        <div class="card">
+          <div class="muted">겹침 건수</div>
+          <div id="hitCount" class="local-large">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="muted">겹친 사람(중복 제거)</div>
+        <div id="peoplePills" class="pills"></div>
+      </div>
+
+      <div class="row between">
+        <h3>겹친 내역</h3>
+        <div class="row gap">
+          <button class="btn" id="downloadCsvBtn" disabled>CSV 다운로드</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="sheetlike" id="resultTable">
+          <thead>
+            <tr>
+              <th>성명</th>
+              <th>초과근무 시작</th>
+              <th>초과근무 종료</th>
+              <th>출장 시작</th>
+              <th>출장 종료</th>
+              <th>겹친 시간(분)</th>
+              <th>출장 파일</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <p class="note" id="noResultNote" style="display:none;">
+        겹치는 내역이 없습니다.
+      </p>
+      <div class="btns">
+      <a class="btn" href="/">메인으로 돌아가기</a>
+    </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <p>이 페이지는 로컬에서만 동작합니다(업로드 파일은 브라우저 내부에서만 읽힘).</p>
+    </div>
+  </footer>
+
+  <!-- ✅ XLSX 파서(외부 라이브러리) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+
+    const otFileEl = $("#otFile");
+    const tripFilesEl = $("#tripFiles");
+    const runBtn = $("#runBtn");
+    const clearBtn = $("#clearBtn");
+    const statusEl = $("#status");
+
+    const resultSection = $("#resultSection");
+    const tripCountEl = $("#tripCount");
+    const otCountEl = $("#otCount");
+    const hitCountEl = $("#hitCount");
+    const peoplePillsEl = $("#peoplePills");
+    const resultTbody = $("#resultTable tbody");
+    const noResultNote = $("#noResultNote");
+    const downloadCsvBtn = $("#downloadCsvBtn");
+
+    let lastMatches = [];
+
+    function setStatus(msg, kind="info") {
+      statusEl.textContent = msg;
+      statusEl.classList.remove("status-error", "status-ok");
+      if (kind === "error") statusEl.classList.add("status-error");
+      if (kind === "ok") statusEl.classList.add("status-ok");
+    }
+
+    function getMode() {
+      const el = document.querySelector('input[name="mode"]:checked');
+      return el ? el.value : "overlap";
+    }
+
+    function normalizeName(v) {
+      let s = (v ?? "").toString().trim();
+      s = s.replace(/\s+/g, "");
+      // 괄호 안 식별자/부가정보 제거 (예: 고해영(K1060...))
+      s = s.replace(/[（(].*?[)）]/g, "");
+      return s;
+    }
+
+    function pad2(n) { return String(n).padStart(2, "0"); }
+
+    function formatDateTime(dt) {
+      const y = dt.getFullYear();
+      const m = pad2(dt.getMonth() + 1);
+      const d = pad2(dt.getDate());
+      const hh = pad2(dt.getHours());
+      const mm = pad2(dt.getMinutes());
+      return `${y}-${m}-${d} ${hh}:${mm}`;
+    }
+
+    function minutesBetween(a, b) {
+      return Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
+    }
+
+    function parseDateFromMixed(value) {
+      if (value instanceof Date) {
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+      }
+      if (typeof value === "number" && Number.isFinite(value)) {
+        // Excel serial date
+        const d = XLSX.SSF.parse_date_code(value);
+        if (!d) return null;
+        return new Date(d.y, d.m - 1, d.d);
+      }
+      const s = (value ?? "").toString();
+      const m = s.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+      if (!m) return null;
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+
+    function parseTimeCell(value) {
+      if (value instanceof Date) {
+        return { h: value.getHours(), m: value.getMinutes() };
+      }
+      if (typeof value === "number" && Number.isFinite(value)) {
+        // Excel time fraction (0~1)
+        const totalMinutes = Math.round(value * 24 * 60);
+        return { h: Math.floor(totalMinutes / 60) % 24, m: totalMinutes % 60 };
+      }
+      const s = (value ?? "").toString();
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      if (!m) return null;
+      return { h: Number(m[1]), m: Number(m[2]) };
+    }
+
+    function parseTimeRange(value) {
+      const s = (value ?? "").toString();
+      const m = s.match(/(\d{1,2}):(\d{2})\s*~\s*(\d{1,2}):(\d{2})/);
+      if (!m) return null;
+      return {
+        start: { h: Number(m[1]), m: Number(m[2]) },
+        end: { h: Number(m[3]), m: Number(m[4]) },
+      };
+    }
+
+    function combineDateTime(dateObj, hm) {
+      return new Date(
+        dateObj.getFullYear(),
+        dateObj.getMonth(),
+        dateObj.getDate(),
+        hm.h, hm.m, 0, 0
+      );
+    }
+
+    async function readAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(fr.error);
+        fr.readAsArrayBuffer(file);
+      });
+    }
+
+    function findKey(keys, predicate) {
+      for (const k of keys) {
+        const nk = k.toString().replace(/\s+/g, "").replace(/\r|\n/g, "");
+        if (predicate(nk)) return k;
+      }
+      return null;
+    }
+
+    function parseOvertimeWorkbook(wb, sourceName) {
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      if (!rows.length) return [];
+
+      const keys = Object.keys(rows[0]);
+      const dateKey = findKey(keys, (k) => k.includes("초과근무일자") || k.includes("초과근무일"));
+      const nameKey = findKey(keys, (k) => k === "성명" || k.includes("성명"));
+      const startKey = findKey(keys, (k) => k.includes("시작시간"));
+      const endKey = findKey(keys, (k) => k.includes("종료시간"));
+
+      if (!dateKey || !nameKey || !startKey || !endKey) {
+        throw new Error("초과근무 파일에서 필수 컬럼(초과근무일자/성명/시작시간/종료시간)을 찾지 못했습니다.");
+      }
+
+      const out = [];
+      for (const r of rows) {
+        const name = normalizeName(r[nameKey]);
+        const d = parseDateFromMixed(r[dateKey]);
+        const st = parseTimeCell(r[startKey]);
+        const en = parseTimeCell(r[endKey]);
+        if (!name || !d || !st || !en) continue;
+
+        let start = combineDateTime(d, st);
+        let end = combineDateTime(d, en);
+        if (end < start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+
+        out.push({ name, start, end, source: sourceName });
+      }
+      return out;
+    }
+
+    function parseTripWorkbook(wb, sourceName) {
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }); // 2D array
+
+      const headerRows = [];
+      for (let r = 0; r < matrix.length; r++) {
+        const row = matrix[r] || [];
+        if (row.some(v => (v ?? "").toString().includes("출장기간"))) {
+          // '출장기간'이 있는 줄을 페이지 헤더로 본다
+          headerRows.push(r);
+        }
+      }
+
+      const trips = [];
+
+      for (let i = 0; i < headerRows.length; i++) {
+        const hr = headerRows[i];
+        const end = (i + 1 < headerRows.length) ? headerRows[i + 1] : matrix.length;
+        const header = matrix[hr] || [];
+
+        const nameCol = header.findIndex(v => /성\s*명/.test((v ?? "").toString()));
+        const periodCol = header.findIndex(v => (v ?? "").toString().includes("출장기간"));
+        if (nameCol === -1 || periodCol === -1) continue;
+
+        let r = hr + 1;
+        let guard = 0;
+
+        while (r + 2 < end && guard < 2000) {
+          guard++;
+
+          const row0 = matrix[r] || [];
+          const rowText = row0.map(v => (v ?? "").toString()).join(" ");
+
+          // 페이지 하단 영역 감지
+          if (rowText.includes("이동 사항") || rowText.includes("여  비") || rowText.includes("여 비") || rowText.includes("여비")) {
+            break;
+          }
+
+          const name = normalizeName(row0[nameCol]);
+          const startText = row0[periodCol];
+          const timeText = (matrix[r + 1] || [])[periodCol];
+          const endText = (matrix[r + 2] || [])[periodCol];
+
+          const sd = parseDateFromMixed(startText);
+          const ed = parseDateFromMixed(endText);
+          const tr = parseTimeRange(timeText);
+
+          if (name && sd && ed && tr) {
+            const start = combineDateTime(sd, tr.start);
+            let finish = combineDateTime(ed, tr.end);
+            if (finish < start) finish = new Date(finish.getTime() + 24 * 60 * 60 * 1000);
+
+            trips.push({ name, start, end: finish, source: sourceName });
+            r += 3; // 다음 사람 블록으로 이동
+            continue;
+          }
+
+          // 패턴이 안 맞으면 한 줄씩 내려가며 재동기화
+          r += 1;
+        }
+      }
+
+      return trips;
+    }
+
+    function isMatch(ot, trip, mode) {
+      if (mode === "date") {
+        const d = new Date(ot.start.getFullYear(), ot.start.getMonth(), ot.start.getDate());
+        const s = new Date(trip.start.getFullYear(), trip.start.getMonth(), trip.start.getDate());
+        const e = new Date(trip.end.getFullYear(), trip.end.getMonth(), trip.end.getDate());
+        return d >= s && d <= e;
+      }
+      if (mode === "contained") {
+        return ot.start >= trip.start && ot.end <= trip.end;
+      }
+      // overlap: strict
+      return ot.start < trip.end && ot.end > trip.start;
+    }
+
+    function buildMatches(trips, overtime, mode) {
+      const tripByName = new Map();
+      for (const t of trips) {
+        if (!tripByName.has(t.name)) tripByName.set(t.name, []);
+        tripByName.get(t.name).push(t);
+      }
+      for (const arr of tripByName.values()) {
+        arr.sort((a, b) => a.start - b.start);
+      }
+
+      const matches = [];
+
+      for (const ot of overtime) {
+        const list = tripByName.get(ot.name);
+        if (!list) continue;
+
+        for (const tr of list) {
+          if (!isMatch(ot, tr, mode)) continue;
+
+          const overlapStart = new Date(Math.max(ot.start.getTime(), tr.start.getTime()));
+          const overlapEnd = new Date(Math.min(ot.end.getTime(), tr.end.getTime()));
+          const mins = (mode === "date") ? "" : minutesBetween(overlapStart, overlapEnd);
+
+          matches.push({
+            name: ot.name,
+            otStart: ot.start,
+            otEnd: ot.end,
+            tripStart: tr.start,
+            tripEnd: tr.end,
+            overlapMin: mins,
+            tripSource: tr.source,
+          });
+        }
+      }
+
+      // 보기 좋게 정렬
+      matches.sort((a, b) => {
+        if (a.name !== b.name) return a.name.localeCompare(b.name);
+        return a.otStart - b.otStart;
+      });
+
+      return matches;
+    }
+
+    function render(trips, overtime, matches) {
+      resultSection.style.display = "block";
+
+      tripCountEl.textContent = trips.length.toString();
+      otCountEl.textContent = overtime.length.toString();
+      hitCountEl.textContent = matches.length.toString();
+
+      // people pills
+      peoplePillsEl.innerHTML = "";
+      const people = Array.from(new Set(matches.map(m => m.name)));
+      if (people.length) {
+        for (const p of people) {
+          const el = document.createElement("div");
+          el.className = "pill";
+          el.innerHTML = `<strong>${p}</strong>`;
+          peoplePillsEl.appendChild(el);
+        }
+      } else {
+        const el = document.createElement("div");
+        el.className = "muted";
+        el.textContent = "없음";
+        peoplePillsEl.appendChild(el);
+      }
+
+      // table
+      resultTbody.innerHTML = "";
+      noResultNote.style.display = matches.length ? "none" : "block";
+
+      for (const m of matches) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="text-align:left;">${m.name}</td>
+          <td>${formatDateTime(m.otStart)}</td>
+          <td>${formatDateTime(m.otEnd)}</td>
+          <td>${formatDateTime(m.tripStart)}</td>
+          <td>${formatDateTime(m.tripEnd)}</td>
+          <td class="numeric">${m.overlapMin === "" ? "" : m.overlapMin}</td>
+          <td style="text-align:left;">${m.tripSource}</td>
+        `;
+        resultTbody.appendChild(tr);
+      }
+
+      downloadCsvBtn.disabled = matches.length === 0;
+    }
+
+    function csvEscape(s) {
+      const v = (s ?? "").toString();
+      if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+      return v;
+    }
+
+    function downloadCSV(matches) {
+      const header = ["성명", "초과근무 시작", "초과근무 종료", "출장 시작", "출장 종료", "겹친 시간(분)", "출장 파일"];
+      const lines = [header.join(",")];
+
+      for (const m of matches) {
+        lines.push([
+          csvEscape(m.name),
+          csvEscape(formatDateTime(m.otStart)),
+          csvEscape(formatDateTime(m.otEnd)),
+          csvEscape(formatDateTime(m.tripStart)),
+          csvEscape(formatDateTime(m.tripEnd)),
+          csvEscape(m.overlapMin === "" ? "" : m.overlapMin),
+          csvEscape(m.tripSource),
+        ].join(","));
+      }
+
+      // Excel에서 한글 깨짐 방지 BOM
+      const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `출장-초과근무-겹침결과_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
+    }
+
+    runBtn.addEventListener("click", async () => {
+      try {
+        if (typeof XLSX === "undefined") {
+          setStatus("xlsx 라이브러리를 불러오지 못했습니다. (CDN 차단 여부 확인)", "error");
+          return;
+        }
+
+        const otFile = otFileEl.files?.[0];
+        const tripFiles = Array.from(tripFilesEl.files || []);
+
+        if (!otFile) {
+          setStatus("초과근무 파일을 선택하세요.", "error");
+          return;
+        }
+        if (!tripFiles.length) {
+          setStatus("출장신청서 파일을 1개 이상 선택하세요.", "error");
+          return;
+        }
+
+        setStatus("파일 읽는 중…");
+        runBtn.disabled = true;
+        downloadCsvBtn.disabled = true;
+        lastMatches = [];
+
+        // 1) 초과근무 파싱
+        const otBuf = await readAsArrayBuffer(otFile);
+        const otWb = XLSX.read(otBuf, { type: "array", cellDates: true });
+        const overtime = parseOvertimeWorkbook(otWb, otFile.name);
+
+        // 2) 출장 파싱(여러 개)
+        let trips = [];
+        for (let i = 0; i < tripFiles.length; i++) {
+          setStatus(`출장 파일 파싱 중… (${i + 1}/${tripFiles.length})`);
+          const f = tripFiles[i];
+          const buf = await readAsArrayBuffer(f);
+          const wb = XLSX.read(buf, { type: "array", cellDates: true });
+          trips = trips.concat(parseTripWorkbook(wb, f.name));
+        }
+
+        // 3) 매칭
+        const mode = getMode();
+        setStatus("겹침 검사 중…");
+        const matches = buildMatches(trips, overtime, mode);
+        lastMatches = matches;
+
+        // 4) 렌더링
+        render(trips, overtime, matches);
+        setStatus(`완료: 겹침 ${matches.length}건`, "ok");
+
+      } catch (err) {
+        console.error(err);
+        setStatus(`오류: ${err?.message || err}`, "error");
+      } finally {
+        runBtn.disabled = false;
+      }
+    });
+
+    downloadCsvBtn.addEventListener("click", () => {
+      if (!lastMatches.length) return;
+      downloadCSV(lastMatches);
+    });
+
+    clearBtn.addEventListener("click", () => {
+      otFileEl.value = "";
+      tripFilesEl.value = "";
+      resultSection.style.display = "none";
+      resultTbody.innerHTML = "";
+      peoplePillsEl.innerHTML = "";
+      noResultNote.style.display = "none";
+      downloadCsvBtn.disabled = true;
+      lastMatches = [];
+      setStatus("대기중");
+    });
+  </script>
+
+  
+  
+  <script src="/static/global-loader.js?v=1"></script>
+<script src="/static/footer.js"></script>
+<script src="/static/disable-copy.js"></script>
+</body>
+</html>

@@ -18,9 +18,9 @@
 
   <p class="muted">
     ·학교 행정 업무 수행 과정에서 반복되는 산출·정리 업무를 구조화하여, 업무 효율성과 정확성을 높이기 위해 설계·제작한 업무 지원 웹페이지입니다.<br/>
-    ·현재는 서버 미사용 상태로 일부 기능 구현에 제한이 있으며, 업무 여건이 허용되는 범위 내에서 단계적으로 업데이트할 예정입니다.<br/>
-    ·※강원특별자치도 기준이며, 지역 무관하게 항상 사용자 본인이 직접 관련 지침 등을 확인하고 업무 처리하여 주십시오. <br/>
-    ·※일부 계산 기능은 검증 미완료 단계입니다.
+    ·강원특별자치도 기준이며, 지역 무관하게 항상 사용자 본인이 직접 관련 지침 등을 확인하고 업무 처리하여 주십시오. <br/>
+    ·일부 계산 기능은 검증 미완료 단계이며, 2026회계 변경 사항은 확정 후 반영 예정입니다.  <br/>
+    ·하단의 이메일로 기능과 사용 환경 등의 피드백을 보내주시면 감사드립니다. <br/>
   </p>
 
   <hr/>
@@ -43,12 +43,12 @@
         </a>
 
         <div class="tool-body">
-          <ul class="tool-list">
+          <div class="muted">
             ·전체 미납자 조회 내역 PDF를 업로드하면 미납자별 독촉 문자 문구와 고지내역 이미지 파일을 자동 생성<br/>
             ·독촉 이력 정리용 서식 자동 생성 (독촉 관리 및 감사 소명자료)<br/>
             ·PDF 경로: 학교회계-수입관리-수입현황-징수및수납현황-미납자현황<br/>
             ·※ 현재 초등학교 PDF 서식만 데이터 추출 가능<br/>
-          </ul>
+          </div>
 
           <details class="shot-details">
             <summary class="shot-summary">프로그램 실행 화면 보기</summary>
@@ -72,10 +72,10 @@
         </a>
 
         <div class="tool-body">
-          <ul class="tool-list">
-            ·검증 완료. 배포 가능.
+          <div class="muted">
+            ·검증 완료. 배포 가능.<br/>
             ·지출결의서 PDF 1년치를 업로드하면 “기타” 및 “보수(일용)” 유형만 선별하여 엑셀 파일로 변환<br/>
-          </ul>
+          </div>
 
           <details class="shot-details">
             <summary class="shot-summary">프로그램 실행 화면 보기</summary>
@@ -107,76 +107,64 @@
 
 <!-- ========================= 본문 계산기 섹션 ========================= -->
 
-<!-- [추가] 노무제공자 섹션 (교육공무직 섹션 위에 배치) -->
+<!-- 노무제공자 -->
 <section class="section">
   <h2 class="local-h2">노무제공자 (방과후강사 등)</h2>
   <hr/>
 
   <div>
-    <a class="btn" href="/pay-afterschool-teacher/">방과후강사 월보수액 계산기</a>
+    <a class="btn" href="/monthly-pay-afterschool-teacher/">방과후강사 월보수액 계산기 (사용 가능)</a>
     <div class="btn-desc">
       ·강사료 입력하면 월보수액이랑 산재보험료 자동계산됨. (검증 완료)
     </div>
   </div>
 </section>
 
+  <section class="section">
+    <h2 class="local-h2">교육공무직 복무 관련</h2>
+    <hr/>
+      <div>
+      <a class="btn" href="/annual-leave-calculator-v2026/">2026학년도 교육공무직 연차 유급휴가일수 계산기 (미완료) </a>
+      <div class="btn-desc">
+        ·2025학년도 근무에 대해 2026학년도에 사용가능한 연차 일수를 부여함. <br/>
+        ·나이스 인사기록 및 근무상황 조회 엑셀 원자료 업로드하면 자동으로 출근율, 연차 부여일수 계산해줌. <br/>
+      </div>
+    </div>
+  </section>
 
-
+  
   <section class="section">
     <h2 class="local-h2">교육공무직 인건비 관련</h2>
     <hr/>
 
     <div>
-      <a class="btn" href="/ordinary-wage/">교육공무직 통상임금 계산기</a>
-      <div class="btn-desc">·직종별 보수표 반영</div>
+      <a class="btn" href="/ordinary-wage/">교육공무직 통상임금 계산기 (사용 가능)</a>
+      <div class="btn-desc">
+        ·학교근로자 직종별 보수표 반영<br/>
+        ·관련: 도교육청 예산과-2109(2025.2.13.)<br/>
+      </div>
     </div>
 
     <div>
-      <a class="btn" href="/vacation-weekly-holiday-wage/">조리종사원·청소원 방학근무 인건비 계산기</a>
+      <a class="btn" href="/vacation-weekly-holiday-wage/">조리종사원·청소원 방학근무 인건비 계산기 (테스트중)</a>
       <div class="btn-desc">·방학중 근무수당·주휴수당 산출</div>
     </div>
 
     <div>
-      <a class="btn" href="/cook-industrial-safety-education-pay/">조리종사원 산업안전보건교육비 계산기</a>
+      <a class="btn" href="/cook-industrial-safety-education-pay/">조리종사원 산업안전보건교육비 계산기 (테스트중)</a>
       <div class="btn-desc">·집체·온라인 교육비 산출</div>
     </div>
 
-    <div>
-      <a class="btn" href="/effect-of-working-during-vacation/">방학중 비상시근로자 부수 영향 계산기</a>
-      <div class="btn-desc">·출근율·연차 산정</div>
-    </div>
-
-    <div>
-      <a class="btn" href="/annual-leave/">교육공무직 연차 유급휴가 계산기</a>
-      <div class="btn-desc">·기본 계산 로직</div>
-    </div>
-
-    <div>
-      <a class="btn" href="/annual-leave-2026-v1/">교육공무직 연차 유급휴가 계산기 (초안)</a>
-      <div class="btn-desc">·수정중</div>
-    </div>
-    
-    <div>
-      <a class="btn" href="/annual-leave-2026-v1-02/">교육공무직 연차 유급휴가 계산기 (1안)</a>
-      <div class="btn-desc">·수정중</div>
-    </div>
-
-    <div>
-      <a class="btn" href="/annual-leave-2026-v2/">교육공무직 연차 유급휴가 계산기 (2안)</a>
-      <div class="btn-desc">·수정중</div>
-    </div>    
-
-    <div>
-      <a class="btn" href="/annual-leave-pay/">연차 유급휴가 미사용 수당 계산기</a>
-      <div class="btn-desc">·통상임금 계산기 연계</div>
-    </div>
   </section>
+
+
+
 
   <section class="section">
     <h2 class="local-h2">계약제교원 인건비 예산 및 지급</h2>
     <hr/>
     <a class="btn" href="/preschool-parttime-contract-teacher/">
-      유치원 시간제근무 기간제교원 연간 인건비 계산기
+      유치원 시간제근무 기간제교원 연간 인건비 계산기 (미완료)
     </a>
     <div class="btn-desc">·근무 유형별 산출 구조 반영</div>
   </section>
@@ -186,27 +174,27 @@
     <hr/>
 
     <div>
-      <a class="btn" href="/user-fee-ratio/">운동부지도자 수익자부담금 비율 계산기</a>
-      <div class="btn-desc">·비율 산정 로직</div>
+      <a class="btn" href="/user-fee-ratio/">운동부지도자 수익자부담금 비율 계산기 (사용 가능)</a>
+      <div class="btn-desc">·실수령액과 공제 금액 모두 수익자부담금을 재원으로 하는 경우 예산 분배 계산함. (개발자 학교 기준)</div>
     </div>
 
     <div>
-      <a class="btn" href="/sports-contract-teacher-budget-calculator/">스포츠강사 연간 인건비 계산기</a>
+      <a class="btn" href="/sports-contract-teacher-budget-calculator/">스포츠강사 연간 인건비 계산기 (테스트중)</a>
       <div class="btn-desc">·2025회계 기준</div>
     </div>
 
     <div>
-      <a class="btn" href="/dc-retirement/">DC형 퇴직연금 소요액 계산기</a>
+      <a class="btn" href="/dc-retirement/">DC형 퇴직연금 소요액 계산기 (미완료)</a>
       <div class="btn-desc">·회계연도 선택</div>
     </div>
 
     <div>
-      <a class="btn" href="/wage-ledger-2025/">학교장 임용권자 2025 임금대장</a>
+      <a class="btn" href="/wage-ledger-2025/">학교장 임용권자 2025 임금대장 (미완료)</a>
       <div class="btn-desc">·엑셀 변환 제공</div>
     </div>
 
     <div>
-      <a class="btn" href="/coach-ot/">학교운동부지도자 초과근무수당 계산기</a>
+      <a class="btn" href="/coach-ot/">학교운동부지도자 초과근무수당 계산기 (미완료)</a>
       <div class="btn-desc">·산출 로직</div>
     </div>
   </section>
@@ -231,7 +219,7 @@
       target="_blank"
       rel="noopener noreferrer"
     >
-      강원 교행노트 바로가기
+      강원 교행노트 바로가기 (링크)
     </a>
     <p class="muted">
       ·기관에서 근무중인 주무관님께서 만드셨습니다. 감사, 통계자료, 법제처 자료 등과 다양한 문서편집 툴 기능이 있습니다.
